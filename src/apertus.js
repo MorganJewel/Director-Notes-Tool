@@ -2,7 +2,7 @@
 import { getSettings } from './settings.js'
 
 const HF_BASE = 'https://router.huggingface.co/hf-inference/models'
-const MODEL = 'mistralai/Mistral-7B-Instruct-v0.2'
+const MODEL = 'HuggingFaceH4/zephyr-7b-beta'
 
 const DEFAULT_HF_KEY = atob('aGZfdkRTUmV2V2lxQ1NVSG5od2VScUVtWEdEcE1pS3hRTVlCTg==')
 
@@ -42,12 +42,11 @@ async function callHuggingFace(prompt) {
 
 export async function suggestCompletion(noteContent) {
   const prompt =
-    `<s>[INST] You are helping a theater director complete a rehearsal note. ` +
-    `The director has written the beginning of a note. ` +
+    `<|system|>\nYou are helping a theater director complete a rehearsal note. ` +
     `Suggest exactly 2-3 short completions (under 15 words each) that finish the thought. ` +
     `Do not rewrite what they have written — only complete it. ` +
-    `Reply with one completion per line, no numbering, no bullet points.\n\n` +
-    `Note so far: "${noteContent}" [/INST]`
+    `Reply with one completion per line, no numbering, no bullet points.</s>\n` +
+    `<|user|>\nNote so far: "${noteContent}"</s>\n<|assistant|>`
 
   const raw = await callHuggingFace(prompt)
 
@@ -67,10 +66,10 @@ export async function explainNote(noteContent, scriptSnippet) {
     : `Note: "${noteContent}"`
 
   const prompt =
-    `<s>[INST] You are a theater dramaturg helping a director reflect on their rehearsal notes. ` +
-    `${context}\n\n` +
-    `In 2-3 sentences, explain in plain English what the director likely meant ` +
-    `and what specific directorial concern they were addressing. Be concrete and practical. [/INST]`
+    `<|system|>\nYou are a theater dramaturg. In 2-3 sentences, explain in plain English ` +
+    `what the director likely meant and what directorial concern they were addressing. ` +
+    `Be concrete and practical.</s>\n` +
+    `<|user|>\n${context}</s>\n<|assistant|>`
 
   const raw = await callHuggingFace(prompt)
   return raw.trim()
