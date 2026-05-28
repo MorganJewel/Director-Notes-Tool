@@ -1,4 +1,4 @@
-import { getSupabase, getUserSessions } from '../supabase.js'
+import { getUserSessions } from '../supabase.js'
 import { appState } from '../state.js'
 
 export async function renderDashboard(container, navigate) {
@@ -11,7 +11,6 @@ export async function renderDashboard(container, navigate) {
         </div>
         <nav class="topbar-nav">
           <button class="btn btn-ghost btn-sm" id="btn-settings">Settings</button>
-          <button class="btn btn-ghost btn-sm" id="btn-logout">Logout</button>
         </nav>
       </header>
 
@@ -26,7 +25,7 @@ export async function renderDashboard(container, navigate) {
         <div id="sessions-grid" class="sessions-grid hidden"></div>
         <div id="sessions-empty" class="empty-state hidden">
           <p>No sessions yet.</p>
-          <p class="muted">Hit <strong>New Session</strong> to start your first rehearsal.</p>
+          <p class="muted">Hit <strong>+ New Session</strong> to start your first rehearsal.</p>
         </div>
       </main>
     </div>
@@ -34,15 +33,6 @@ export async function renderDashboard(container, navigate) {
 
   container.querySelector('#btn-settings').addEventListener('click', () => navigate('#settings'))
   container.querySelector('#btn-new-session').addEventListener('click', () => navigate('#new-session'))
-
-  container.querySelector('#btn-logout').addEventListener('click', async () => {
-    try {
-      const sb = getSupabase()
-      await sb.auth.signOut()
-    } catch (_) {}
-    appState.currentSession = null
-    navigate('#login')
-  })
 
   const loadingEl = container.querySelector('#sessions-loading')
   const errorEl = container.querySelector('#sessions-error')

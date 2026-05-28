@@ -1,90 +1,62 @@
-import { createClient } from '@supabase/supabase-js'
-import { getSettings } from './settings.js'
+// localStorage-backed data store — no Supabase, no auth required for demo.
 
-let _client = null
-let _cachedUrl = null
-let _cachedKey = null
+const SESSIONS_KEY = 'dma_sessions'
+const NOTES_KEY = 'dma_notes'
 
-export function getSupabase() {
-  const { supabaseUrl, supabaseAnonKey } = getSettings()
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase credentials not configured. Please go to Settings.')
-  }
-  if (_client && _cachedUrl === supabaseUrl && _cachedKey === supabaseAnonKey) {
-    return _client
-  }
-  _client = createClient(supabaseUrl, supabaseAnonKey)
-  _cachedUrl = supabaseUrl
-  _cachedKey = supabaseAnonKey
-  return _client
+function uid() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-export async function getCurrentUser() {
-  const sb = getSupabase()
-  const { data: { user } } = await sb.auth.getUser()
-  return user
+function readSessions() {
+  try { return JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]') } catch (_) { return [] }
 }
+
+function readNotes() {
+  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '[]') } catch (_) { return [] }
+}
+
+function writeSessions(sessions) { localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions)) }
+function writeNotes(notes) { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)) }
 
 export async function createSession(productionName, scriptName) {
-  const sb = getSupabase()
-  const { data: { user } } = await sb.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const { data, error } = await sb
-    .from('sessions')
-    .insert({ user_id: user.id, production_name: productionName, script_name: scriptName || null })
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
+  const session = {
+    id: uid(),
+    production_name: productionName,
+    script_name: scriptName || null,
+    created_at: new Date().toISOString(),
+  }
+  const sessions = readSessions()
+  sessions.unshift(session)
+  writeSessions(sessions)
+  return session
 }
 
 export async function getUserSessions() {
-  const sb = getSupabase()
-
-  const { data: sessions, error } = await sb
-    .from('sessions')
-    .select('id, production_name, script_name, created_at')
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  if (!sessions || sessions.length === 0) return []
-
-  const counts = await Promise.all(
-    sessions.map(s =>
-      sb.from('notes')
-        .select('*', { count: 'exact', head: true })
-        .eq('session_id', s.id)
-    )
-  )
-
-  return sessions.map((s, i) => ({
+  const sessions = readSessions()
+  const notes = readNotes()
+  return sessions.map(s => ({
     ...s,
-    noteCount: counts[i].count ?? 0,
+    noteCount: notes.filter(n => n.session_id === s.id).length,
   }))
 }
 
 export async function createNote(sessionId, noteData) {
-  const sb = getSupabase()
-  const { data, error } = await sb
-    .from('notes')
-    .insert({ session_id: sessionId, ...noteData })
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
+  const note = {
+    id: uid(),
+    session_id: sessionId,
+    ...noteData,
+    created_at: new Date().toISOString(),
+  }
+  const notes = readNotes()
+  notes.push(note)
+  writeNotes(notes)
+  return note
 }
 
 export async function getSessionNotes(sessionId) {
-  const sb = getSupabase()
-  const { data, error } = await sb
-    .from('notes')
-    .select('*')
-    .eq('session_id', sessionId)
-    .order('created_at', { ascending: true })
-
-  if (error) throw error
-  return data || []
+  return readNotes()
+    .filter(n => n.session_id === sessionId)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
 }

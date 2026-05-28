@@ -1,7 +1,4 @@
-import { getSettings } from './settings.js'
-import { getSupabase } from './supabase.js'
 import { appState } from './state.js'
-import { renderLogin } from './pages/login.js'
 import { renderDashboard } from './pages/dashboard.js'
 import { renderNewSession } from './pages/newSession.js'
 import { renderRehearsal } from './pages/rehearsal.js'
@@ -15,37 +12,11 @@ function navigate(hash) {
   window.location.hash = hash
 }
 
-async function isAuthenticated() {
-  try {
-    const { supabaseUrl, supabaseAnonKey } = getSettings()
-    if (!supabaseUrl || !supabaseAnonKey) return false
-    const sb = getSupabase()
-    const { data: { user } } = await sb.auth.getUser()
-    return !!user
-  } catch (_) {
-    return false
-  }
-}
-
 async function router() {
-  const hash = window.location.hash || '#login'
-  const publicRoutes = new Set(['#login', '#settings'])
+  const hash = window.location.hash || '#dashboard'
   app.innerHTML = ''
 
-  if (!publicRoutes.has(hash)) {
-    const authed = await isAuthenticated()
-    if (!authed) {
-      const { supabaseUrl, supabaseAnonKey } = getSettings()
-      window.location.hash = (!supabaseUrl || !supabaseAnonKey) ? '#settings' : '#login'
-      return
-    }
-  }
-
   switch (hash) {
-    case '#login':
-      renderLogin(app, navigate)
-      break
-
     case '#dashboard':
       await renderDashboard(app, navigate)
       break
@@ -69,7 +40,7 @@ async function router() {
       break
 
     default:
-      navigate('#login')
+      navigate('#dashboard')
   }
 }
 
