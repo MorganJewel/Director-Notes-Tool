@@ -1,7 +1,7 @@
 // All HuggingFace Inference API calls live here exclusively.
 import { getSettings } from './settings.js'
 
-const HF_CHAT = 'https://router.huggingface.co/hf-inference/models/HuggingFaceH4/zephyr-7b-beta/v1/chat/completions'
+const HF_CHAT = 'https://router.huggingface.co/together/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions'
 
 const DEFAULT_HF_KEY = atob('aGZfdkRTUmV2V2lxQ1NVSG5od2VScUVtWEdEcE1pS3hRTVlCTg==')
 
@@ -16,7 +16,7 @@ async function callHuggingFace(systemMsg, userMsg) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'HuggingFaceH4/zephyr-7b-beta',
+      model: 'mistralai/Mistral-7B-Instruct-v0.3',
       messages: [
         { role: 'system', content: systemMsg },
         { role: 'user',   content: userMsg },
