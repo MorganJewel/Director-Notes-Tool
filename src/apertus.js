@@ -1,28 +1,27 @@
 // All HuggingFace Inference API calls live here exclusively.
 import { getSettings } from './settings.js'
 
-const HF_CHAT = 'https://router.huggingface.co/together/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions'
+const HF_URL = 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2'
 
 const DEFAULT_HF_KEY = atob('aGZfdkRTUmV2V2lxQ1NVSG5od2VScUVtWEdEcE1pS3hRTVlCTg==')
 
-async function callHuggingFace(systemMsg, userMsg) {
+async function callHuggingFace(prompt) {
   const { hfApiKey } = getSettings()
   const key = hfApiKey || DEFAULT_HF_KEY
 
-  const response = await fetch(HF_CHAT, {
+  const response = await fetch(HF_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'mistralai/Mistral-7B-Instruct-v0.3',
-      messages: [
-        { role: 'system', content: systemMsg },
-        { role: 'user',   content: userMsg },
-      ],
-      max_tokens: 300,
-      temperature: 0.7,
+      inputs: prompt,
+      parameters: {
+        max_new_tokens: 300,
+        temperature: 0.7,
+        return_full_text: false,
+      },
     }),
   })
 
@@ -35,19 +34,20 @@ async function callHuggingFace(systemMsg, userMsg) {
   }
 
   const result = await response.json()
-  const text = result?.choices?.[0]?.message?.content
-  if (!text) throw new Error('Unexpected response from HuggingFace API.')
+  const text = Array.isArray(result) ? result[0]?.generated_text : result?.generated_text
+  if (text == null) throw new Error('Unexpected response from HuggingFace API.')
   return text
 }
 
 export async function suggestCompletion(noteContent) {
-  const system =
-    'You are helping a theater director complete a rehearsal note. ' +
-    'Suggest exactly 2-3 short completions (under 15 words each) that finish the thought. ' +
-    'Do not rewrite what they have written — only complete it. ' +
-    'Reply with one completion per line, no numbering, no bullet points.'
+  const prompt =
+    `<s>[INST] You are helping a theater director complete a rehearsal note. ` +
+    `Suggest exactly 2-3 short completions (under 15 words each) that finish the thought. ` +
+    `Do not rewrite what they have written — only complete it. ` +
+    `Reply with one completion per line, no numbering, no bullet points.\n\n` +
+    `Note so far: "${noteContent}" [/INST]`
 
-  const raw = await callHuggingFace(system, `Note so far: "${noteContent}"`)
+  const raw = await callHuggingFace(prompt)
 
   const lines = raw
     .split('\n')
@@ -60,15 +60,15 @@ export async function suggestCompletion(noteContent) {
 }
 
 export async function explainNote(noteContent, scriptSnippet) {
-  const system =
-    'You are a theater dramaturg. In 2-3 sentences, explain in plain English ' +
-    'what the director likely meant and what directorial concern they were addressing. ' +
-    'Be concrete and practical.'
-
-  const userMsg = scriptSnippet
-    ? `Note: "${noteContent}"\n\nScript context: "${scriptSnippet.substring(0, 200)}"`
+  const context = scriptSnippet
+    ? `Note: "${noteContent}"\n\nScript context at this moment: "${scriptSnippet.substring(0, 200)}"`
     : `Note: "${noteContent}"`
 
-  const raw = await callHuggingFace(system, userMsg)
+  const prompt =
+    `<s>[INST] You are a theater dramaturg. In 2-3 sentences, explain in plain English ` +
+    `what the director likely meant and what directorial concern they were addressing. ` +
+    `Be concrete and practical.\n\n${context} [/INST]`
+
+  const raw = await callHuggingFace(prompt)
   return raw.trim()
 }
