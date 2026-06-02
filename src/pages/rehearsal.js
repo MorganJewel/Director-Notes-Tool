@@ -13,7 +13,7 @@ export function renderRehearsal(container, navigate) {
         <div class="rehearsal-info">
           <span class="logo-mark">▶</span>
           <span class="rehearsal-prod">${esc(session.productionName)}</span>
-          <span class="live-badge">● LIVE</span>
+          <span class="live-badge">Live</span>
         </div>
         <button class="btn btn-danger btn-sm" id="btn-end">End Session</button>
       </header>
@@ -43,18 +43,24 @@ export function renderRehearsal(container, navigate) {
           </div>
 
           <div class="note-form">
+            <div class="moment-indicator hidden" id="moment-indicator">
+              <span class="moment-label">Note for:</span>
+              <span id="moment-text" class="moment-text"></span>
+              <button type="button" id="clear-moment" class="btn-clear-moment">✕</button>
+            </div>
+
             <div class="form-group">
               <label for="note-content">Note Content</label>
               <textarea
                 id="note-content"
                 rows="5"
-                placeholder="Start typing your directorial note…"
+                placeholder="Click a line in the script, then type your note…"
               ></textarea>
             </div>
 
-            <div class="suggestions-area hidden" id="suggestions-area">
-              <p class="suggestions-label">Click a suggestion to append it:</p>
-              <div id="suggestions-list" class="suggestions-list"></div>
+            <div class="ghost-hint hidden" id="ghost-hint">
+              <span class="ghost-tab-badge">Tab</span>
+              <span id="ghost-text" class="ghost-text"></span>
             </div>
 
             <div class="note-meta-grid">
@@ -73,7 +79,7 @@ export function renderRehearsal(container, navigate) {
               <div class="form-group">
                 <label for="note-cat">Category</label>
                 <select id="note-cat">
-                  <option value="">— none —</option>
+                  <option value="">(none)</option>
                   <option value="timing">Timing</option>
                   <option value="intention">Intention</option>
                   <option value="physical">Physical</option>
@@ -88,7 +94,6 @@ export function renderRehearsal(container, navigate) {
             <div id="note-success" class="message-box success hidden"></div>
 
             <div class="note-actions">
-              <button class="btn btn-secondary" id="btn-suggest">Suggest Completion</button>
               <button class="btn btn-primary" id="btn-save">Complete Note</button>
             </div>
           </div>
@@ -109,6 +114,7 @@ export function renderRehearsal(container, navigate) {
     pageJump.value = clamped
     notePageInput.value = clamped
     scriptContent.innerHTML = renderScriptPage(pages, clamped)
+    clearMoment()
   }
 
   container.querySelector('#prev-page').addEventListener('click', () => goToPage(currentPage - 1))
@@ -126,51 +132,106 @@ export function renderRehearsal(container, navigate) {
   // ── End session ─────────────────────────────────────────────────────────────
   container.querySelector('#btn-end').addEventListener('click', () => navigate('#end-session'))
 
-  // ── Suggest completion ───────────────────────────────────────────────────────
+  // ── Ghost text autocomplete ──────────────────────────────────────────────────
   const noteContentEl = container.querySelector('#note-content')
-  const suggestionsArea = container.querySelector('#suggestions-area')
-  const suggestionsList = container.querySelector('#suggestions-list')
+  const ghostHint = container.querySelector('#ghost-hint')
+  const ghostTextEl = container.querySelector('#ghost-text')
   const noteErrorEl = container.querySelector('#note-error')
   const noteSuccessEl = container.querySelector('#note-success')
-  const suggestBtn = container.querySelector('#btn-suggest')
   const saveBtn = container.querySelector('#btn-save')
   const notesCountEl = container.querySelector('#notes-count')
 
-  suggestBtn.addEventListener('click', async () => {
-    const content = noteContentEl.value.trim()
-    if (!content) {
-      showError('Write some of the note first before requesting suggestions.')
+  let ghostSuggestions = []
+  let ghostIndex = 0
+  let debounceTimer = null
+  let selectedMoment = null
+  const DEBOUNCE_MS = 800
+  const MIN_CHARS = 15
+
+  function showGhost(suggestions, index = 0) {
+    ghostSuggestions = suggestions
+    ghostIndex = index
+    const total = suggestions.length
+    ghostTextEl.textContent = suggestions[index]
+    ghostHint.querySelector('.ghost-tab-badge').textContent =
+      total > 1 ? `Tab  /  1 for next (${index + 1}/${total})` : 'Tab'
+    ghostHint.classList.remove('hidden')
+  }
+
+  function clearGhost() {
+    ghostSuggestions = []
+    ghostIndex = 0
+    ghostHint.classList.add('hidden')
+    ghostTextEl.textContent = ''
+  }
+
+  function recentNoteExamples() {
+    return (appState.sessionNotes || [])
+      .slice(-5)
+      .map(n => n.content)
+      .filter(Boolean)
+  }
+
+  function showMomentIndicator(text) {
+    container.querySelector('#moment-text').textContent =
+      text.length > 70 ? text.substring(0, 70) + '…' : text
+    container.querySelector('#moment-indicator').classList.remove('hidden')
+  }
+
+  function clearMoment() {
+    selectedMoment = null
+    container.querySelector('#moment-indicator').classList.add('hidden')
+    container.querySelector('#moment-text').textContent = ''
+  }
+
+  container.querySelector('#clear-moment').addEventListener('click', clearMoment)
+
+  scriptContent.addEventListener('click', e => {
+    const line = e.target.closest('.script-line')
+    if (!line) return
+    scriptContent.querySelectorAll('.script-line.selected').forEach(el => el.classList.remove('selected'))
+    line.classList.add('selected')
+    selectedMoment = { text: line.textContent.trim(), lineIndex: parseInt(line.dataset.index) }
+    showMomentIndicator(selectedMoment.text)
+    notePageInput.value = currentPage
+    noteContentEl.focus()
+  })
+
+  noteContentEl.addEventListener('keydown', e => {
+    if (ghostSuggestions.length === 0) return
+
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      const current = noteContentEl.value.trimEnd()
+      noteContentEl.value = current + ' ' + ghostSuggestions[ghostIndex].trimStart()
+      clearGhost()
+      clearTimeout(debounceTimer)
       return
     }
 
-    clearMessages()
-    suggestBtn.disabled = true
-    suggestBtn.textContent = 'Thinking…'
-    suggestionsArea.classList.add('hidden')
-
-    try {
-      const suggestions = await suggestCompletion(content)
-      suggestionsList.innerHTML = suggestions
-        .map(s => `<button class="suggestion-chip">${esc(s)}</button>`)
-        .join('')
-      suggestionsArea.classList.remove('hidden')
-
-      suggestionsList.querySelectorAll('.suggestion-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const current = noteContentEl.value.trimEnd()
-          const addition = chip.textContent.trimStart()
-          const separator = current.endsWith('.') || current.endsWith('?') || current.endsWith('!') ? ' ' : ' '
-          noteContentEl.value = current + separator + addition
-          suggestionsArea.classList.add('hidden')
-          noteContentEl.focus()
-        })
-      })
-    } catch (err) {
-      showError(`Suggestion failed: ${err.message}`)
-    } finally {
-      suggestBtn.disabled = false
-      suggestBtn.textContent = 'Suggest Completion'
+    if (e.key === '1') {
+      e.preventDefault()
+      const next = (ghostIndex + 1) % ghostSuggestions.length
+      showGhost(ghostSuggestions, next)
+      return
     }
+
+    if (e.key === 'Escape') clearGhost()
+  })
+
+  noteContentEl.addEventListener('input', () => {
+    clearGhost()
+    clearTimeout(debounceTimer)
+    const content = noteContentEl.value.trim()
+    if (content.length < MIN_CHARS) return
+    debounceTimer = setTimeout(async () => {
+      if (noteContentEl.value.trim().length < MIN_CHARS) return
+      try {
+        const actor = container.querySelector('#note-actor').value.trim()
+        const suggestions = await suggestCompletion(content, recentNoteExamples(), actor)
+        if (suggestions.length > 0) showGhost(suggestions)
+      } catch { /* fail silently, ghost text is non-critical */ }
+    }, DEBOUNCE_MS)
   })
 
   // ── Save note ────────────────────────────────────────────────────────────────
@@ -186,7 +247,8 @@ export function renderRehearsal(container, navigate) {
     saveBtn.textContent = 'Saving…'
 
     const pageNum = parseInt(notePageInput.value) || currentPage
-    const lineSnippet = getLineSnippet(pages, pageNum)
+    const lineSnippet = selectedMoment ? selectedMoment.text : getLineSnippet(pages, pageNum)
+    const lineIndex = selectedMoment ? selectedMoment.lineIndex : null
 
     const noteData = {
       content,
@@ -195,6 +257,7 @@ export function renderRehearsal(container, navigate) {
       actor: container.querySelector('#note-actor').value.trim() || null,
       emotional_category: container.querySelector('#note-cat').value || null,
       line_snippet: lineSnippet,
+      line_index: lineIndex,
       timestamp_seconds: Math.floor(Date.now() / 1000),
     }
 
@@ -210,7 +273,11 @@ export function renderRehearsal(container, navigate) {
       container.querySelector('#note-scene').value = ''
       container.querySelector('#note-actor').value = ''
       container.querySelector('#note-cat').value = ''
-      suggestionsArea.classList.add('hidden')
+      clearGhost()
+      clearMoment()
+      clearTimeout(debounceTimer)
+
+      scriptContent.innerHTML = renderScriptPage(pages, currentPage)
 
       noteSuccessEl.textContent = 'Note saved!'
       noteSuccessEl.classList.remove('hidden')
@@ -241,10 +308,24 @@ export function renderRehearsal(container, navigate) {
 function renderScriptPage(pages, pageNum) {
   const page = pages.find(p => p.pageNumber === pageNum)
   if (!page) return `<p class="script-missing">Page ${pageNum} not available.</p>`
+
+  const annotated = new Set(
+    (appState.sessionNotes || [])
+      .filter(n => n.page_number === pageNum && n.line_index != null)
+      .map(n => n.line_index)
+  )
+
+  const lines = (page.text || '').split('\n')
+  const linesHtml = lines.map((line, i) => {
+    if (!line.trim()) return `<span class="script-line-blank"></span>`
+    const dot = annotated.has(i) ? `<span class="line-note-dot" title="Note exists">◆</span>` : ''
+    return `<span class="script-line${annotated.has(i) ? ' has-note' : ''}" data-index="${i}">${dot}${esc(line)}</span>`
+  }).join('\n')
+
   return `
     <div class="script-page">
-      <div class="script-page-label">Page ${pageNum}</div>
-      <pre class="script-text">${esc(page.text || '(no text on this page)')}</pre>
+      <div class="script-page-label">Page ${pageNum}, click any line to anchor your note</div>
+      <pre class="script-text">${linesHtml}</pre>
     </div>
   `
 }

@@ -127,6 +127,14 @@ function groupNotes(notes, tabType) {
     if (!groups[key]) groups[key] = []
     groups[key].push(n)
   })
+  // Sort within each group by page then pinned line position
+  Object.values(groups).forEach(arr => {
+    arr.sort((a, b) => {
+      const pd = (a.page_number ?? Infinity) - (b.page_number ?? Infinity)
+      if (pd !== 0) return pd
+      return (a.line_index ?? Infinity) - (b.line_index ?? Infinity)
+    })
+  })
   return groups
 }
 
@@ -152,6 +160,7 @@ function noteCard(note) {
     : ''
   return `
     <div class="note-card">
+      ${note.line_snippet ? `<div class="note-moment-ref">"${esc(note.line_snippet.length > 80 ? note.line_snippet.substring(0, 80) + '…' : note.line_snippet)}"</div>` : ''}
       <p class="note-content">${esc(note.content)}</p>
       <div class="note-meta">
         ${note.page_number != null ? `<span class="meta-badge">Pg ${note.page_number}</span>` : ''}

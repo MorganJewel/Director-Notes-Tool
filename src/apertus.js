@@ -1,65 +1,71 @@
-// All HuggingFace Inference API calls live here exclusively.
-import { getSettings } from './settings.js'
+// All AI inference calls live here exclusively.
 
-const HF_API_BASE = 'https://api-inference.huggingface.co/models'
-const MODEL = 'mistralai/Mistral-7B-Instruct-v0.2'
+const POLLINATIONS_CHAT = 'https://text.pollinations.ai/openai'
 
-const DEFAULT_HF_KEY = atob('aGZfdkRTUmV2V2lxQ1NVSG5od2VScUVtWEdEcE1pS3hRTVlCTg==')
+// Serial request queue. Pollinations allows only 1 concurrent request per IP.
+let _queue = Promise.resolve()
 
-async function callHuggingFace(prompt) {
-  const { hfApiKey } = getSettings()
-  const key = hfApiKey || DEFAULT_HF_KEY
-  if (!key) {
-    throw new Error('HuggingFace API key not configured. Please go to Settings.')
-  }
+function callAI(systemMsg, userMsg) {
+  const result = new Promise((resolve, reject) => {
+    _queue = _queue.then(() => _fetch(systemMsg, userMsg).then(resolve, reject))
+  })
+  return result
+}
 
-  const response = await fetch(`${HF_API_BASE}/${MODEL}`, {
+async function _fetch(systemMsg, userMsg, attempt = 0) {
+  const response = await fetch(POLLINATIONS_CHAT, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      inputs: prompt,
-      parameters: {
-        max_new_tokens: 250,
-        temperature: 0.7,
-        return_full_text: false,
-      },
+      model: 'openai',
+      messages: [
+        { role: 'system', content: systemMsg },
+        { role: 'user', content: userMsg },
+      ],
+      max_tokens: 300,
+      temperature: 0.7,
     }),
   })
 
-  if (response.status === 503) {
-    throw new Error('Model is loading — please wait 20–30 seconds and try again.')
+  if (response.status === 429 && attempt < 3) {
+    await new Promise(r => setTimeout(r, 3000 * (attempt + 1)))
+    return _fetch(systemMsg, userMsg, attempt + 1)
   }
 
   if (!response.ok) {
     const body = await response.text()
-    throw new Error(`HuggingFace API error (${response.status}): ${body}`)
+    throw new Error(`AI error (${response.status}): ${body}`)
   }
 
   const result = await response.json()
-
-  if (Array.isArray(result) && result[0]?.generated_text !== undefined) {
-    return result[0].generated_text
-  }
-  if (result?.generated_text !== undefined) {
-    return result.generated_text
-  }
-  throw new Error('Unexpected response shape from HuggingFace API.')
+  const text = result?.choices?.[0]?.message?.content
+  if (!text) throw new Error('Unexpected response from AI.')
+  return text
 }
 
-export async function suggestCompletion(noteContent) {
-  const prompt =
-    `<s>[INST] You are helping a theater director complete a rehearsal note. ` +
-    `The director has written the beginning of a note. ` +
-    `Suggest 2-3 short completions (under 15 words each) that finish the thought. ` +
-    `Do not rewrite what they have written. Only complete it.\n\n` +
-    `Note so far: "${noteContent}"\n\n` +
-    `Provide exactly 2-3 completions, one per line, without numbering or bullet points. ` +
-    `Each completion is only the ending that follows what the director already wrote. [/INST]`
+export async function suggestCompletion(noteContent, recentNotes = [], actorName = '') {
+  const actorConstraint = actorName
+    ? `\nThis note is specifically about "${actorName}". Every suggestion must be about ${actorName} only. Never introduce or mention any other character.`
+    : ''
 
-  const raw = await callHuggingFace(prompt)
+  const examplesBlock = recentNotes.length > 0
+    ? '\n\nHere are recent notes from this director. Match their style and vocabulary:\n' +
+      recentNotes.map(n => `- "${n}"`).join('\n')
+    : ''
+
+  const system =
+    'You are helping a theater director complete a rehearsal note about an actor\'s performance. ' +
+    'Suggestions must be about acting choices only: character motivation, emotional intention, ' +
+    'physical action, relationship dynamics, subtext, or blocking. ' +
+    'Never suggest anything involving lighting, sound, costumes, set design, or other production departments. ' +
+    'those are never the actor\'s job. ' +
+    'Suggest exactly 3 short completions (under 15 words each) that finish the thought naturally. ' +
+    'Do not rewrite what they have written. Only complete it. ' +
+    'Reply with one completion per line, no numbering, no bullet points, nothing else.' +
+    actorConstraint +
+    examplesBlock
+
+  const raw = await callAI(system, `Note so far: "${noteContent}"`)
 
   const lines = raw
     .split('\n')
@@ -67,23 +73,19 @@ export async function suggestCompletion(noteContent) {
     .filter(l => l.length > 2 && l.length < 120)
     .slice(0, 3)
 
-  if (lines.length === 0) {
-    throw new Error('No completions returned from the model.')
-  }
+  if (lines.length === 0) throw new Error('No completions returned.')
   return lines
 }
 
 export async function explainNote(noteContent, scriptSnippet) {
-  const snippetPart = scriptSnippet
-    ? `\n\nContext from the script at this moment: "${scriptSnippet.substring(0, 200)}"`
-    : ''
+  const system =
+    'You are a theater dramaturg. In 2-3 sentences, explain in plain English ' +
+    'what the director likely meant and what directorial concern they were addressing. ' +
+    'Be concrete and practical.'
 
-  const prompt =
-    `<s>[INST] You are a theater dramaturg helping a director reflect on their rehearsal notes. ` +
-    `A director wrote this note: "${noteContent}"${snippetPart}\n\n` +
-    `In 2-3 sentences, explain in plain English what the director likely meant ` +
-    `and what specific directorial concern they were addressing. Be concrete and practical. [/INST]`
+  const userMsg = scriptSnippet
+    ? `Note: "${noteContent}"\n\nScript context: "${scriptSnippet.substring(0, 200)}"`
+    : `Note: "${noteContent}"`
 
-  const raw = await callHuggingFace(prompt)
-  return raw.trim()
+  return (await callAI(system, userMsg)).trim()
 }
