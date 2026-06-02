@@ -8,7 +8,7 @@ const STEPS = [
   },
   {
     title: 'Start a Session',
-    body: 'Click <strong>+ New Session</strong>, give your production a name, and optionally upload your script as a PDF. Scanned scripts are supported too — OCR runs automatically.',
+    body: 'Click <strong>+ New Session</strong>, give your production a name, and optionally upload your script as a PDF. Scanned scripts are supported too. OCR runs automatically.',
     icon: '📋',
   },
   {
@@ -23,7 +23,7 @@ const STEPS = [
   },
   {
     title: 'Review After Rehearsal',
-    body: 'Hit <strong>End Session</strong> when you are done. Notes are organized by actor, page, scene, or category — in script order. Tap <strong>What did I mean?</strong> on any note for an AI explanation of your intention.',
+    body: 'Hit <strong>End Session</strong> when you are done. Notes are organized by actor, page, scene, or category, in script order. Tap <strong>What did I mean?</strong> on any note for an AI explanation of your intention.',
     icon: '📒',
   },
 ]

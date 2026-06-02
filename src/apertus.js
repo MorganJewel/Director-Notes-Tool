@@ -2,7 +2,7 @@
 
 const POLLINATIONS_CHAT = 'https://text.pollinations.ai/openai'
 
-// Serial request queue — Pollinations allows only 1 concurrent request per IP.
+// Serial request queue. Pollinations allows only 1 concurrent request per IP.
 let _queue = Promise.resolve()
 
 function callAI(systemMsg, userMsg) {
@@ -45,11 +45,11 @@ async function _fetch(systemMsg, userMsg, attempt = 0) {
 
 export async function suggestCompletion(noteContent, recentNotes = [], actorName = '') {
   const actorConstraint = actorName
-    ? `\nThis note is specifically about "${actorName}". Every suggestion must be about ${actorName} only — never introduce or mention any other character.`
+    ? `\nThis note is specifically about "${actorName}". Every suggestion must be about ${actorName} only. Never introduce or mention any other character.`
     : ''
 
   const examplesBlock = recentNotes.length > 0
-    ? '\n\nHere are recent notes from this director — match their style and vocabulary:\n' +
+    ? '\n\nHere are recent notes from this director. Match their style and vocabulary:\n' +
       recentNotes.map(n => `- "${n}"`).join('\n')
     : ''
 
@@ -57,10 +57,10 @@ export async function suggestCompletion(noteContent, recentNotes = [], actorName
     'You are helping a theater director complete a rehearsal note about an actor\'s performance. ' +
     'Suggestions must be about acting choices only: character motivation, emotional intention, ' +
     'physical action, relationship dynamics, subtext, or blocking. ' +
-    'Never suggest anything involving lighting, sound, costumes, set design, or other production departments — ' +
+    'Never suggest anything involving lighting, sound, costumes, set design, or other production departments. ' +
     'those are never the actor\'s job. ' +
     'Suggest exactly 3 short completions (under 15 words each) that finish the thought naturally. ' +
-    'Do not rewrite what they have written — only complete it. ' +
+    'Do not rewrite what they have written. Only complete it. ' +
     'Reply with one completion per line, no numbering, no bullet points, nothing else.' +
     actorConstraint +
     examplesBlock

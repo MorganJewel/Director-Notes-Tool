@@ -1,4 +1,4 @@
-// localStorage-backed data store — no Supabase, no auth required for demo.
+// localStorage-backed data store. No Supabase, no auth required for demo.
 
 const SESSIONS_KEY = 'dma_sessions'
 const NOTES_KEY = 'dma_notes'

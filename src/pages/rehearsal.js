@@ -230,7 +230,7 @@ export function renderRehearsal(container, navigate) {
         const actor = container.querySelector('#note-actor').value.trim()
         const suggestions = await suggestCompletion(content, recentNoteExamples(), actor)
         if (suggestions.length > 0) showGhost(suggestions)
-      } catch { /* fail silently — ghost text is non-critical */ }
+      } catch { /* fail silently, ghost text is non-critical */ }
     }, DEBOUNCE_MS)
   })
 
@@ -324,7 +324,7 @@ function renderScriptPage(pages, pageNum) {
 
   return `
     <div class="script-page">
-      <div class="script-page-label">Page ${pageNum} - click any line to anchor your note</div>
+      <div class="script-page-label">Page ${pageNum}, click any line to anchor your note</div>
       <pre class="script-text">${linesHtml}</pre>
     </div>
   `
