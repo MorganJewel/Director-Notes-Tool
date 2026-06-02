@@ -134,31 +134,55 @@ export function renderRehearsal(container, navigate) {
   const saveBtn = container.querySelector('#btn-save')
   const notesCountEl = container.querySelector('#notes-count')
 
-  let ghostSuggestion = null
+  let ghostSuggestions = []
+  let ghostIndex = 0
   let debounceTimer = null
   const DEBOUNCE_MS = 800
   const MIN_CHARS = 15
 
-  function showGhost(text) {
-    ghostSuggestion = text
-    ghostTextEl.textContent = text
+  function showGhost(suggestions, index = 0) {
+    ghostSuggestions = suggestions
+    ghostIndex = index
+    const total = suggestions.length
+    ghostTextEl.textContent = suggestions[index]
+    ghostHint.querySelector('.ghost-tab-badge').textContent =
+      total > 1 ? `Tab ↵  •  1 for next (${index + 1}/${total})` : 'Tab ↵'
     ghostHint.classList.remove('hidden')
   }
 
   function clearGhost() {
-    ghostSuggestion = null
+    ghostSuggestions = []
+    ghostIndex = 0
     ghostHint.classList.add('hidden')
     ghostTextEl.textContent = ''
   }
 
+  function recentNoteExamples() {
+    return (appState.sessionNotes || [])
+      .slice(-5)
+      .map(n => n.content)
+      .filter(Boolean)
+  }
+
   noteContentEl.addEventListener('keydown', e => {
-    if (e.key === 'Tab' && ghostSuggestion) {
+    if (ghostSuggestions.length === 0) return
+
+    if (e.key === 'Tab') {
       e.preventDefault()
       const current = noteContentEl.value.trimEnd()
-      noteContentEl.value = current + ' ' + ghostSuggestion.trimStart()
+      noteContentEl.value = current + ' ' + ghostSuggestions[ghostIndex].trimStart()
       clearGhost()
       clearTimeout(debounceTimer)
+      return
     }
+
+    if (e.key === '1') {
+      e.preventDefault()
+      const next = (ghostIndex + 1) % ghostSuggestions.length
+      showGhost(ghostSuggestions, next)
+      return
+    }
+
     if (e.key === 'Escape') clearGhost()
   })
 
@@ -168,11 +192,10 @@ export function renderRehearsal(container, navigate) {
     const content = noteContentEl.value.trim()
     if (content.length < MIN_CHARS) return
     debounceTimer = setTimeout(async () => {
+      if (noteContentEl.value.trim().length < MIN_CHARS) return
       try {
-        const suggestions = await suggestCompletion(content)
-        if (suggestions[0] && noteContentEl.value.trim().length >= MIN_CHARS) {
-          showGhost(suggestions[0])
-        }
+        const suggestions = await suggestCompletion(content, recentNoteExamples())
+        if (suggestions.length > 0) showGhost(suggestions)
       } catch { /* fail silently — ghost text is non-critical */ }
     }, DEBOUNCE_MS)
   })
