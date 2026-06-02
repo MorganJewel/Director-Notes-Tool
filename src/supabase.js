@@ -20,6 +20,8 @@ function readNotes() {
 function writeSessions(sessions) { localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions)) }
 function writeNotes(notes) { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)) }
 
+const MAX_SESSIONS = 5
+
 export async function createSession(productionName, scriptName) {
   const session = {
     id: uid(),
@@ -29,7 +31,15 @@ export async function createSession(productionName, scriptName) {
   }
   const sessions = readSessions()
   sessions.unshift(session)
-  writeSessions(sessions)
+
+  // Keep only the most recent MAX_SESSIONS sessions
+  const trimmed = sessions.slice(0, MAX_SESSIONS)
+  const keptIds = new Set(trimmed.map(s => s.id))
+  writeSessions(trimmed)
+
+  // Remove notes that belong to dropped sessions
+  writeNotes(readNotes().filter(n => keptIds.has(n.session_id)))
+
   return session
 }
 
