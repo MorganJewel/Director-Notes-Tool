@@ -79,7 +79,7 @@ export function renderRehearsal(container, navigate) {
               <div class="form-group">
                 <label for="note-cat">Category</label>
                 <select id="note-cat">
-                  <option value="">— none —</option>
+                  <option value="">(none)</option>
                   <option value="timing">Timing</option>
                   <option value="intention">Intention</option>
                   <option value="physical">Physical</option>
@@ -324,7 +324,7 @@ function renderScriptPage(pages, pageNum) {
 
   return `
     <div class="script-page">
-      <div class="script-page-label">Page ${pageNum} — click any line to anchor your note</div>
+      <div class="script-page-label">Page ${pageNum} - click any line to anchor your note</div>
       <pre class="script-text">${linesHtml}</pre>
     </div>
   `

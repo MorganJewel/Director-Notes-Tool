@@ -137,7 +137,7 @@ async function parsePDF(file, onStatus) {
   const pages = []
 
   for (let i = 1; i <= pdf.numPages; i++) {
-    onStatus(`Extracting text — page ${i} of ${pdf.numPages}…`, 'loading')
+    onStatus(`Extracting text, page ${i} of ${pdf.numPages}...`, 'loading')
     const page = await pdf.getPage(i)
     const content = await page.getTextContent()
     const text = extractLines(content)
@@ -147,7 +147,7 @@ async function parsePDF(file, onStatus) {
   const avgChars = pages.reduce((sum, p) => sum + p.text.length, 0) / pages.length
 
   if (avgChars < 50) {
-    onStatus('No text found — looks like a scanned PDF. Loading OCR…', 'loading')
+    onStatus('No text found. Looks like a scanned PDF. Loading OCR...', 'loading')
     await loadTesseract()
     const ocrCount = Math.min(10, pdf.numPages)
     const ocrPages = await ocrPDF(buffer, ocrCount, onStatus)
@@ -219,7 +219,7 @@ async function ocrPDF(buffer, pageCount, onStatus) {
 
   try {
     for (let i = 1; i <= pageCount; i++) {
-      onStatus(`OCR — page ${i} of ${pageCount}…`, 'loading')
+      onStatus(`OCR, page ${i} of ${pageCount}...`, 'loading')
       const page = await pdf.getPage(i)
       const viewport = page.getViewport({ scale: 2.0 })
       const canvas = document.createElement('canvas')

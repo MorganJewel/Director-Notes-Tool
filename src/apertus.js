@@ -2,7 +2,17 @@
 
 const POLLINATIONS_CHAT = 'https://text.pollinations.ai/openai'
 
-async function callAI(systemMsg, userMsg, attempt = 0) {
+// Serial request queue — Pollinations allows only 1 concurrent request per IP.
+let _queue = Promise.resolve()
+
+function callAI(systemMsg, userMsg) {
+  const result = new Promise((resolve, reject) => {
+    _queue = _queue.then(() => _fetch(systemMsg, userMsg).then(resolve, reject))
+  })
+  return result
+}
+
+async function _fetch(systemMsg, userMsg, attempt = 0) {
   const response = await fetch(POLLINATIONS_CHAT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -19,7 +29,7 @@ async function callAI(systemMsg, userMsg, attempt = 0) {
 
   if (response.status === 429 && attempt < 3) {
     await new Promise(r => setTimeout(r, 3000 * (attempt + 1)))
-    return callAI(systemMsg, userMsg, attempt + 1)
+    return _fetch(systemMsg, userMsg, attempt + 1)
   }
 
   if (!response.ok) {

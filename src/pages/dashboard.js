@@ -1,5 +1,6 @@
 import { getUserSessions } from '../supabase.js'
 import { appState } from '../state.js'
+import { showTourIfFirstVisit, startTour } from '../components/tour.js'
 
 export async function renderDashboard(container, navigate) {
   container.innerHTML = `
@@ -10,6 +11,7 @@ export async function renderDashboard(container, navigate) {
           <span class="topbar-title">Director Margin AI</span>
         </div>
         <nav class="topbar-nav">
+          <button class="btn btn-ghost btn-sm" id="btn-tour">How it works</button>
           <button class="btn btn-ghost btn-sm" id="btn-settings">Settings</button>
         </nav>
       </header>
@@ -33,6 +35,9 @@ export async function renderDashboard(container, navigate) {
 
   container.querySelector('#btn-settings').addEventListener('click', () => navigate('#settings'))
   container.querySelector('#btn-new-session').addEventListener('click', () => navigate('#new-session'))
+  container.querySelector('#btn-tour').addEventListener('click', startTour)
+
+  showTourIfFirstVisit()
 
   const loadingEl = container.querySelector('#sessions-loading')
   const errorEl = container.querySelector('#sessions-error')
