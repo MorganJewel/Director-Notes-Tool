@@ -43,24 +43,24 @@ export function renderRehearsal(container, navigate) {
           </div>
 
           <div class="note-form">
+            <div class="moment-indicator hidden" id="moment-indicator">
+              <span class="moment-label">Note for:</span>
+              <span id="moment-text" class="moment-text"></span>
+              <button type="button" id="clear-moment" class="btn-clear-moment">✕</button>
+            </div>
+
             <div class="form-group">
               <label for="note-content">Note Content</label>
               <textarea
                 id="note-content"
                 rows="5"
-                placeholder="Start typing your directorial note…"
+                placeholder="Click a line in the script, then type your note…"
               ></textarea>
             </div>
 
             <div class="ghost-hint hidden" id="ghost-hint">
               <span class="ghost-tab-badge">Tab ↵</span>
               <span id="ghost-text" class="ghost-text"></span>
-            </div>
-
-            <div class="moment-indicator hidden" id="moment-indicator">
-              <span class="moment-pin">📍</span>
-              <span id="moment-text" class="moment-text"></span>
-              <button type="button" id="clear-moment" class="btn-clear-moment">✕</button>
             </div>
 
             <div class="note-meta-grid">
@@ -194,6 +194,7 @@ export function renderRehearsal(container, navigate) {
     selectedMoment = { text: line.textContent.trim(), lineIndex: parseInt(line.dataset.index) }
     showMomentIndicator(selectedMoment.text)
     notePageInput.value = currentPage
+    noteContentEl.focus()
   })
 
   noteContentEl.addEventListener('keydown', e => {
@@ -276,6 +277,8 @@ export function renderRehearsal(container, navigate) {
       clearMoment()
       clearTimeout(debounceTimer)
 
+      scriptContent.innerHTML = renderScriptPage(pages, currentPage)
+
       noteSuccessEl.textContent = 'Note saved!'
       noteSuccessEl.classList.remove('hidden')
       setTimeout(() => noteSuccessEl.classList.add('hidden'), 2500)
@@ -305,15 +308,23 @@ export function renderRehearsal(container, navigate) {
 function renderScriptPage(pages, pageNum) {
   const page = pages.find(p => p.pageNumber === pageNum)
   if (!page) return `<p class="script-missing">Page ${pageNum} not available.</p>`
+
+  const annotated = new Set(
+    (appState.sessionNotes || [])
+      .filter(n => n.page_number === pageNum && n.line_index != null)
+      .map(n => n.line_index)
+  )
+
   const lines = (page.text || '').split('\n')
-  const linesHtml = lines.map((line, i) =>
-    line.trim()
-      ? `<span class="script-line" data-index="${i}">${esc(line)}</span>`
-      : `<span class="script-line-blank"></span>`
-  ).join('\n')
+  const linesHtml = lines.map((line, i) => {
+    if (!line.trim()) return `<span class="script-line-blank"></span>`
+    const dot = annotated.has(i) ? `<span class="line-note-dot" title="Note exists">◆</span>` : ''
+    return `<span class="script-line${annotated.has(i) ? ' has-note' : ''}" data-index="${i}">${dot}${esc(line)}</span>`
+  }).join('\n')
+
   return `
     <div class="script-page">
-      <div class="script-page-label">Page ${pageNum} — click a line to pin it to your note</div>
+      <div class="script-page-label">Page ${pageNum} — click any line to anchor your note</div>
       <pre class="script-text">${linesHtml}</pre>
     </div>
   `

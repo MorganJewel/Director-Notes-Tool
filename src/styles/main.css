@@ -511,33 +511,49 @@ select option { background: var(--bg-card); }
 }
 .script-line:hover { background: var(--bg-hover); }
 .script-line.selected {
-  background: rgba(99,102,241,.15);
+  background: rgba(99,102,241,.18);
   outline: 1px solid var(--accent);
 }
+.script-line.has-note { border-left: 2px solid var(--accent); padding-left: 4px; }
 .script-line-blank { display: block; height: .55em; }
+.line-note-dot {
+  color: var(--accent);
+  font-size: .6em;
+  margin-right: .3em;
+  vertical-align: middle;
+  opacity: .7;
+}
 
 /* ── Pinned moment indicator ─────────────────────────────────────────────────── */
 .moment-indicator {
   display: flex;
-  align-items: center;
-  gap: .45rem;
-  padding: .35rem .6rem;
+  align-items: baseline;
+  gap: .5rem;
+  padding: .5rem .75rem;
   border-radius: var(--radius);
-  background: rgba(99,102,241,.08);
-  border: 1px solid rgba(99,102,241,.3);
-  font-size: .82rem;
+  background: rgba(99,102,241,.1);
+  border: 1.5px solid rgba(99,102,241,.4);
+  font-size: .85rem;
   animation: fadeIn .15s ease;
+  margin-bottom: .25rem;
 }
-.moment-pin { flex-shrink: 0; }
-.moment-text { flex: 1; color: var(--text-muted); font-style: italic; }
+.moment-label {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--accent);
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.moment-text { flex: 1; color: var(--text); font-style: italic; }
 .btn-clear-moment {
   flex-shrink: 0;
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: .8rem;
-  padding: 0 .2rem;
+  font-size: .85rem;
+  padding: 0 .15rem;
   line-height: 1;
 }
 .btn-clear-moment:hover { color: var(--text); }
