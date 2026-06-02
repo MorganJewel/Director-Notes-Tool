@@ -52,9 +52,9 @@ export function renderRehearsal(container, navigate) {
               ></textarea>
             </div>
 
-            <div class="suggestions-area hidden" id="suggestions-area">
-              <p class="suggestions-label">Click a suggestion to append it:</p>
-              <div id="suggestions-list" class="suggestions-list"></div>
+            <div class="ghost-hint hidden" id="ghost-hint">
+              <span class="ghost-tab-badge">Tab ↵</span>
+              <span id="ghost-text" class="ghost-text"></span>
             </div>
 
             <div class="note-meta-grid">
@@ -88,7 +88,6 @@ export function renderRehearsal(container, navigate) {
             <div id="note-success" class="message-box success hidden"></div>
 
             <div class="note-actions">
-              <button class="btn btn-secondary" id="btn-suggest">Suggest Completion</button>
               <button class="btn btn-primary" id="btn-save">Complete Note</button>
             </div>
           </div>
@@ -126,51 +125,56 @@ export function renderRehearsal(container, navigate) {
   // ── End session ─────────────────────────────────────────────────────────────
   container.querySelector('#btn-end').addEventListener('click', () => navigate('#end-session'))
 
-  // ── Suggest completion ───────────────────────────────────────────────────────
+  // ── Ghost text autocomplete ──────────────────────────────────────────────────
   const noteContentEl = container.querySelector('#note-content')
-  const suggestionsArea = container.querySelector('#suggestions-area')
-  const suggestionsList = container.querySelector('#suggestions-list')
+  const ghostHint = container.querySelector('#ghost-hint')
+  const ghostTextEl = container.querySelector('#ghost-text')
   const noteErrorEl = container.querySelector('#note-error')
   const noteSuccessEl = container.querySelector('#note-success')
-  const suggestBtn = container.querySelector('#btn-suggest')
   const saveBtn = container.querySelector('#btn-save')
   const notesCountEl = container.querySelector('#notes-count')
 
-  suggestBtn.addEventListener('click', async () => {
+  let ghostSuggestion = null
+  let debounceTimer = null
+  const DEBOUNCE_MS = 650
+  const MIN_CHARS = 8
+
+  function showGhost(text) {
+    ghostSuggestion = text
+    ghostTextEl.textContent = text
+    ghostHint.classList.remove('hidden')
+  }
+
+  function clearGhost() {
+    ghostSuggestion = null
+    ghostHint.classList.add('hidden')
+    ghostTextEl.textContent = ''
+  }
+
+  noteContentEl.addEventListener('keydown', e => {
+    if (e.key === 'Tab' && ghostSuggestion) {
+      e.preventDefault()
+      const current = noteContentEl.value.trimEnd()
+      noteContentEl.value = current + ' ' + ghostSuggestion.trimStart()
+      clearGhost()
+      clearTimeout(debounceTimer)
+    }
+    if (e.key === 'Escape') clearGhost()
+  })
+
+  noteContentEl.addEventListener('input', () => {
+    clearGhost()
+    clearTimeout(debounceTimer)
     const content = noteContentEl.value.trim()
-    if (!content) {
-      showError('Write some of the note first before requesting suggestions.')
-      return
-    }
-
-    clearMessages()
-    suggestBtn.disabled = true
-    suggestBtn.textContent = 'Thinking…'
-    suggestionsArea.classList.add('hidden')
-
-    try {
-      const suggestions = await suggestCompletion(content)
-      suggestionsList.innerHTML = suggestions
-        .map(s => `<button class="suggestion-chip">${esc(s)}</button>`)
-        .join('')
-      suggestionsArea.classList.remove('hidden')
-
-      suggestionsList.querySelectorAll('.suggestion-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const current = noteContentEl.value.trimEnd()
-          const addition = chip.textContent.trimStart()
-          const separator = current.endsWith('.') || current.endsWith('?') || current.endsWith('!') ? ' ' : ' '
-          noteContentEl.value = current + separator + addition
-          suggestionsArea.classList.add('hidden')
-          noteContentEl.focus()
-        })
-      })
-    } catch (err) {
-      showError(`Suggestion failed: ${err.message}`)
-    } finally {
-      suggestBtn.disabled = false
-      suggestBtn.textContent = 'Suggest Completion'
-    }
+    if (content.length < MIN_CHARS) return
+    debounceTimer = setTimeout(async () => {
+      try {
+        const suggestions = await suggestCompletion(content)
+        if (suggestions[0] && noteContentEl.value.trim().length >= MIN_CHARS) {
+          showGhost(suggestions[0])
+        }
+      } catch { /* fail silently — ghost text is non-critical */ }
+    }, DEBOUNCE_MS)
   })
 
   // ── Save note ────────────────────────────────────────────────────────────────
@@ -210,7 +214,8 @@ export function renderRehearsal(container, navigate) {
       container.querySelector('#note-scene').value = ''
       container.querySelector('#note-actor').value = ''
       container.querySelector('#note-cat').value = ''
-      suggestionsArea.classList.add('hidden')
+      clearGhost()
+      clearTimeout(debounceTimer)
 
       noteSuccessEl.textContent = 'Note saved!'
       noteSuccessEl.classList.remove('hidden')
