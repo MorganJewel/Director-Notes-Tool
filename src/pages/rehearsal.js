@@ -136,8 +136,8 @@ export function renderRehearsal(container, navigate) {
 
   let ghostSuggestion = null
   let debounceTimer = null
-  const DEBOUNCE_MS = 650
-  const MIN_CHARS = 8
+  const DEBOUNCE_MS = 800
+  const MIN_CHARS = 15
 
   function showGhost(text) {
     ghostSuggestion = text
