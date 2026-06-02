@@ -1,53 +1,41 @@
-// All HuggingFace Inference API calls live here exclusively.
-import { getSettings } from './settings.js'
+// All AI inference calls live here exclusively.
 
-const HF_URL = 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2'
+const POLLINATIONS_CHAT = 'https://text.pollinations.ai/openai'
 
-const DEFAULT_HF_KEY = atob('aGZfdkRTUmV2V2lxQ1NVSG5od2VScUVtWEdEcE1pS3hRTVlCTg==')
-
-async function callHuggingFace(prompt) {
-  const { hfApiKey } = getSettings()
-  const key = hfApiKey || DEFAULT_HF_KEY
-
-  const response = await fetch(HF_URL, {
+async function callAI(systemMsg, userMsg) {
+  const response = await fetch(POLLINATIONS_CHAT, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      inputs: prompt,
-      parameters: {
-        max_new_tokens: 300,
-        temperature: 0.7,
-        return_full_text: false,
-      },
+      model: 'openai',
+      messages: [
+        { role: 'system', content: systemMsg },
+        { role: 'user', content: userMsg },
+      ],
+      max_tokens: 300,
+      temperature: 0.7,
     }),
   })
 
-  if (response.status === 503) {
-    throw new Error('Model is loading — please wait 20–30 seconds and try again.')
-  }
   if (!response.ok) {
     const body = await response.text()
-    throw new Error(`HuggingFace API error (${response.status}): ${body}`)
+    throw new Error(`AI error (${response.status}): ${body}`)
   }
 
   const result = await response.json()
-  const text = Array.isArray(result) ? result[0]?.generated_text : result?.generated_text
-  if (text == null) throw new Error('Unexpected response from HuggingFace API.')
+  const text = result?.choices?.[0]?.message?.content
+  if (!text) throw new Error('Unexpected response from AI.')
   return text
 }
 
 export async function suggestCompletion(noteContent) {
-  const prompt =
-    `<s>[INST] You are helping a theater director complete a rehearsal note. ` +
-    `Suggest exactly 2-3 short completions (under 15 words each) that finish the thought. ` +
-    `Do not rewrite what they have written — only complete it. ` +
-    `Reply with one completion per line, no numbering, no bullet points.\n\n` +
-    `Note so far: "${noteContent}" [/INST]`
+  const system =
+    'You are helping a theater director complete a rehearsal note. ' +
+    'Suggest exactly 3 short completions (under 15 words each) that finish the thought. ' +
+    'Do not rewrite what they have written — only complete it. ' +
+    'Reply with one completion per line, no numbering, no bullet points, nothing else.'
 
-  const raw = await callHuggingFace(prompt)
+  const raw = await callAI(system, `Note so far: "${noteContent}"`)
 
   const lines = raw
     .split('\n')
@@ -55,20 +43,19 @@ export async function suggestCompletion(noteContent) {
     .filter(l => l.length > 2 && l.length < 120)
     .slice(0, 3)
 
-  if (lines.length === 0) throw new Error('No completions returned from the model.')
+  if (lines.length === 0) throw new Error('No completions returned.')
   return lines
 }
 
 export async function explainNote(noteContent, scriptSnippet) {
-  const context = scriptSnippet
-    ? `Note: "${noteContent}"\n\nScript context at this moment: "${scriptSnippet.substring(0, 200)}"`
+  const system =
+    'You are a theater dramaturg. In 2-3 sentences, explain in plain English ' +
+    'what the director likely meant and what directorial concern they were addressing. ' +
+    'Be concrete and practical.'
+
+  const userMsg = scriptSnippet
+    ? `Note: "${noteContent}"\n\nScript context: "${scriptSnippet.substring(0, 200)}"`
     : `Note: "${noteContent}"`
 
-  const prompt =
-    `<s>[INST] You are a theater dramaturg. In 2-3 sentences, explain in plain English ` +
-    `what the director likely meant and what directorial concern they were addressing. ` +
-    `Be concrete and practical.\n\n${context} [/INST]`
-
-  const raw = await callHuggingFace(prompt)
-  return raw.trim()
+  return (await callAI(system, userMsg)).trim()
 }
