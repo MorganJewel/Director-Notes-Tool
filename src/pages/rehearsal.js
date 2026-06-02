@@ -13,7 +13,7 @@ export function renderRehearsal(container, navigate) {
         <div class="rehearsal-info">
           <span class="logo-mark">▶</span>
           <span class="rehearsal-prod">${esc(session.productionName)}</span>
-          <span class="live-badge">● LIVE</span>
+          <span class="live-badge">Live</span>
         </div>
         <button class="btn btn-danger btn-sm" id="btn-end">End Session</button>
       </header>
@@ -59,7 +59,7 @@ export function renderRehearsal(container, navigate) {
             </div>
 
             <div class="ghost-hint hidden" id="ghost-hint">
-              <span class="ghost-tab-badge">Tab ↵</span>
+              <span class="ghost-tab-badge">Tab</span>
               <span id="ghost-text" class="ghost-text"></span>
             </div>
 
@@ -154,7 +154,7 @@ export function renderRehearsal(container, navigate) {
     const total = suggestions.length
     ghostTextEl.textContent = suggestions[index]
     ghostHint.querySelector('.ghost-tab-badge').textContent =
-      total > 1 ? `Tab ↵  •  1 for next (${index + 1}/${total})` : 'Tab ↵'
+      total > 1 ? `Tab  /  1 for next (${index + 1}/${total})` : 'Tab'
     ghostHint.classList.remove('hidden')
   }
 

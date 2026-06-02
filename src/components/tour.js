@@ -4,27 +4,27 @@ const STEPS = [
   {
     title: 'Welcome to Director Margin AI',
     body: 'Capture rehearsal notes faster with AI assistance. This quick tour shows you how everything works.',
-    icon: '▶',
+    icon: 'I',
   },
   {
     title: 'Start a Session',
     body: 'Click <strong>+ New Session</strong>, give your production a name, and optionally upload your script as a PDF. Scanned scripts are supported too. OCR runs automatically.',
-    icon: '📋',
+    icon: 'II',
   },
   {
     title: 'Anchor Notes to Lines',
     body: 'Your script appears on the left. <strong>Click any line</strong> to anchor your note to that exact moment. The line highlights and a banner at the top of the note form confirms your selection.',
-    icon: '📍',
+    icon: 'III',
   },
   {
     title: 'AI Completes Your Notes',
     body: 'Start typing a note. After a short pause, the AI suggests a completion below the text box. <strong>Press Tab to accept</strong> or <strong>1 to cycle</strong> through options. Fill in the Actor field to keep suggestions focused on one character.',
-    icon: '✦',
+    icon: 'IV',
   },
   {
     title: 'Review After Rehearsal',
     body: 'Hit <strong>End Session</strong> when you are done. Notes are organized by actor, page, scene, or category, in script order. Tap <strong>What did I mean?</strong> on any note for an AI explanation of your intention.',
-    icon: '📒',
+    icon: 'V',
   },
 ]
 

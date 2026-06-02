@@ -78,7 +78,7 @@ export function renderNewSession(container, navigate) {
 
     try {
       parsedPages = await parsePDF(file, setStatus)
-      setStatus(`✓ Parsed ${parsedPages.length} pages successfully.`, 'success')
+      setStatus(`Parsed ${parsedPages.length} pages successfully.`, 'success')
     } catch (err) {
       setStatus(`PDF parse failed: ${err.message}`, 'error')
       parsedPages = null
