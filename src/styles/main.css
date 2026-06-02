@@ -500,6 +500,58 @@ select option { background: var(--bg-card); }
 }
 .note-actions .btn-primary { flex: 1; }
 
+/* ── Clickable script lines ──────────────────────────────────────────────────── */
+.script-line {
+  display: block;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin: 0 -5px;
+  transition: background .1s;
+}
+.script-line:hover { background: var(--bg-hover); }
+.script-line.selected {
+  background: rgba(99,102,241,.15);
+  outline: 1px solid var(--accent);
+}
+.script-line-blank { display: block; height: .55em; }
+
+/* ── Pinned moment indicator ─────────────────────────────────────────────────── */
+.moment-indicator {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .35rem .6rem;
+  border-radius: var(--radius);
+  background: rgba(99,102,241,.08);
+  border: 1px solid rgba(99,102,241,.3);
+  font-size: .82rem;
+  animation: fadeIn .15s ease;
+}
+.moment-pin { flex-shrink: 0; }
+.moment-text { flex: 1; color: var(--text-muted); font-style: italic; }
+.btn-clear-moment {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: .8rem;
+  padding: 0 .2rem;
+  line-height: 1;
+}
+.btn-clear-moment:hover { color: var(--text); }
+
+/* ── Note moment reference (end session) ─────────────────────────────────────── */
+.note-moment-ref {
+  font-size: .78rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: .35rem;
+  padding-left: .5rem;
+  border-left: 2px solid var(--accent);
+}
+
 /* ── Ghost text autocomplete ─────────────────────────────────────────────────── */
 .ghost-hint {
   display: flex;

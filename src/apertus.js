@@ -28,7 +28,11 @@ async function callAI(systemMsg, userMsg) {
   return text
 }
 
-export async function suggestCompletion(noteContent, recentNotes = []) {
+export async function suggestCompletion(noteContent, recentNotes = [], actorName = '') {
+  const actorConstraint = actorName
+    ? `\nThis note is specifically about "${actorName}". Every suggestion must be about ${actorName} only — never introduce or mention any other character.`
+    : ''
+
   const examplesBlock = recentNotes.length > 0
     ? '\n\nHere are recent notes from this director — match their style and vocabulary:\n' +
       recentNotes.map(n => `- "${n}"`).join('\n')
@@ -43,6 +47,7 @@ export async function suggestCompletion(noteContent, recentNotes = []) {
     'Suggest exactly 3 short completions (under 15 words each) that finish the thought naturally. ' +
     'Do not rewrite what they have written — only complete it. ' +
     'Reply with one completion per line, no numbering, no bullet points, nothing else.' +
+    actorConstraint +
     examplesBlock
 
   const raw = await callAI(system, `Note so far: "${noteContent}"`)

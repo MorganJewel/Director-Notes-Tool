@@ -57,6 +57,12 @@ export function renderRehearsal(container, navigate) {
               <span id="ghost-text" class="ghost-text"></span>
             </div>
 
+            <div class="moment-indicator hidden" id="moment-indicator">
+              <span class="moment-pin">📍</span>
+              <span id="moment-text" class="moment-text"></span>
+              <button type="button" id="clear-moment" class="btn-clear-moment">✕</button>
+            </div>
+
             <div class="note-meta-grid">
               <div class="form-group">
                 <label for="note-page">Page</label>
@@ -108,6 +114,7 @@ export function renderRehearsal(container, navigate) {
     pageJump.value = clamped
     notePageInput.value = clamped
     scriptContent.innerHTML = renderScriptPage(pages, clamped)
+    clearMoment()
   }
 
   container.querySelector('#prev-page').addEventListener('click', () => goToPage(currentPage - 1))
@@ -137,6 +144,7 @@ export function renderRehearsal(container, navigate) {
   let ghostSuggestions = []
   let ghostIndex = 0
   let debounceTimer = null
+  let selectedMoment = null
   const DEBOUNCE_MS = 800
   const MIN_CHARS = 15
 
@@ -163,6 +171,30 @@ export function renderRehearsal(container, navigate) {
       .map(n => n.content)
       .filter(Boolean)
   }
+
+  function showMomentIndicator(text) {
+    container.querySelector('#moment-text').textContent =
+      text.length > 70 ? text.substring(0, 70) + '…' : text
+    container.querySelector('#moment-indicator').classList.remove('hidden')
+  }
+
+  function clearMoment() {
+    selectedMoment = null
+    container.querySelector('#moment-indicator').classList.add('hidden')
+    container.querySelector('#moment-text').textContent = ''
+  }
+
+  container.querySelector('#clear-moment').addEventListener('click', clearMoment)
+
+  scriptContent.addEventListener('click', e => {
+    const line = e.target.closest('.script-line')
+    if (!line) return
+    scriptContent.querySelectorAll('.script-line.selected').forEach(el => el.classList.remove('selected'))
+    line.classList.add('selected')
+    selectedMoment = { text: line.textContent.trim(), lineIndex: parseInt(line.dataset.index) }
+    showMomentIndicator(selectedMoment.text)
+    notePageInput.value = currentPage
+  })
 
   noteContentEl.addEventListener('keydown', e => {
     if (ghostSuggestions.length === 0) return
@@ -194,7 +226,8 @@ export function renderRehearsal(container, navigate) {
     debounceTimer = setTimeout(async () => {
       if (noteContentEl.value.trim().length < MIN_CHARS) return
       try {
-        const suggestions = await suggestCompletion(content, recentNoteExamples())
+        const actor = container.querySelector('#note-actor').value.trim()
+        const suggestions = await suggestCompletion(content, recentNoteExamples(), actor)
         if (suggestions.length > 0) showGhost(suggestions)
       } catch { /* fail silently — ghost text is non-critical */ }
     }, DEBOUNCE_MS)
@@ -213,7 +246,8 @@ export function renderRehearsal(container, navigate) {
     saveBtn.textContent = 'Saving…'
 
     const pageNum = parseInt(notePageInput.value) || currentPage
-    const lineSnippet = getLineSnippet(pages, pageNum)
+    const lineSnippet = selectedMoment ? selectedMoment.text : getLineSnippet(pages, pageNum)
+    const lineIndex = selectedMoment ? selectedMoment.lineIndex : null
 
     const noteData = {
       content,
@@ -222,6 +256,7 @@ export function renderRehearsal(container, navigate) {
       actor: container.querySelector('#note-actor').value.trim() || null,
       emotional_category: container.querySelector('#note-cat').value || null,
       line_snippet: lineSnippet,
+      line_index: lineIndex,
       timestamp_seconds: Math.floor(Date.now() / 1000),
     }
 
@@ -238,6 +273,7 @@ export function renderRehearsal(container, navigate) {
       container.querySelector('#note-actor').value = ''
       container.querySelector('#note-cat').value = ''
       clearGhost()
+      clearMoment()
       clearTimeout(debounceTimer)
 
       noteSuccessEl.textContent = 'Note saved!'
@@ -269,10 +305,16 @@ export function renderRehearsal(container, navigate) {
 function renderScriptPage(pages, pageNum) {
   const page = pages.find(p => p.pageNumber === pageNum)
   if (!page) return `<p class="script-missing">Page ${pageNum} not available.</p>`
+  const lines = (page.text || '').split('\n')
+  const linesHtml = lines.map((line, i) =>
+    line.trim()
+      ? `<span class="script-line" data-index="${i}">${esc(line)}</span>`
+      : `<span class="script-line-blank"></span>`
+  ).join('\n')
   return `
     <div class="script-page">
-      <div class="script-page-label">Page ${pageNum}</div>
-      <pre class="script-text">${esc(page.text || '(no text on this page)')}</pre>
+      <div class="script-page-label">Page ${pageNum} — click a line to pin it to your note</div>
+      <pre class="script-text">${linesHtml}</pre>
     </div>
   `
 }
