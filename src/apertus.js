@@ -2,7 +2,7 @@
 
 const POLLINATIONS_CHAT = 'https://text.pollinations.ai/openai'
 
-async function callAI(systemMsg, userMsg) {
+async function callAI(systemMsg, userMsg, attempt = 0) {
   const response = await fetch(POLLINATIONS_CHAT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -16,6 +16,11 @@ async function callAI(systemMsg, userMsg) {
       temperature: 0.7,
     }),
   })
+
+  if (response.status === 429 && attempt < 3) {
+    await new Promise(r => setTimeout(r, 3000 * (attempt + 1)))
+    return callAI(systemMsg, userMsg, attempt + 1)
+  }
 
   if (!response.ok) {
     const body = await response.text()
