@@ -30,8 +30,12 @@ async function callAI(systemMsg, userMsg) {
 
 export async function suggestCompletion(noteContent) {
   const system =
-    'You are helping a theater director complete a rehearsal note. ' +
-    'Suggest exactly 3 short completions (under 15 words each) that finish the thought. ' +
+    'You are helping a theater director complete a rehearsal note about an actor\'s performance. ' +
+    'Suggestions must be about acting choices only: character motivation, emotional intention, ' +
+    'physical action, relationship dynamics, subtext, or blocking. ' +
+    'Never suggest anything involving lighting, sound, costumes, set design, or other production departments — ' +
+    'those are never the actor\'s job. ' +
+    'Suggest exactly 3 short completions (under 15 words each) that finish the thought naturally. ' +
     'Do not rewrite what they have written — only complete it. ' +
     'Reply with one completion per line, no numbering, no bullet points, nothing else.'
 
