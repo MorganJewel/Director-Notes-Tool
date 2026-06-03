@@ -383,6 +383,7 @@ select option { background: var(--surface); }
   color: var(--text);
 }
 .settings-help { font-size: .85rem; color: var(--text-muted); line-height: 1.65; }
+.settings-actions { display: flex; flex-direction: column; gap: .75rem; }
 
 /* ── Rehearsal layout ────────────────────────────────────────────────────────── */
 .rehearsal-layout {

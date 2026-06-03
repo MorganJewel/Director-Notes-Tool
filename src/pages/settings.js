@@ -1,8 +1,9 @@
-import { getSettings, saveSettings } from '../settings.js'
+import { TOUR_KEY } from '../components/tour.js'
+
+const SESSIONS_KEY = 'dma_sessions'
+const NOTES_KEY = 'dma_notes'
 
 export function renderSettings(container, navigate) {
-  const current = getSettings()
-
   container.innerHTML = `
     <div class="page-layout">
       <header class="topbar">
@@ -11,33 +12,18 @@ export function renderSettings(container, navigate) {
       </header>
 
       <main class="page-main narrow">
-        <form id="settings-form" novalidate>
-          <section class="settings-section">
-            <h2>HuggingFace</h2>
-            <p class="settings-help">
-              Get your free token from
-              <strong>huggingface.co → Settings → Access Tokens</strong>.
-              A read-scope token is all you need.
-            </p>
+        <section class="settings-section">
+          <h2>Data</h2>
+          <p class="settings-help">
+            All sessions and notes are stored locally in your browser. Nothing is sent to a server.
+          </p>
+          <div class="settings-actions">
+            <button class="btn btn-ghost btn-sm" id="btn-reset-tour">Replay walkthrough tour</button>
+            <button class="btn btn-danger btn-sm" id="btn-clear-data">Clear all sessions and notes</button>
+          </div>
+        </section>
 
-            <div class="form-group">
-              <label for="hf-key">API Token</label>
-              <div class="input-row">
-                <input
-                  type="password"
-                  id="hf-key"
-                  value="${escAttr(current.hfApiKey)}"
-                  placeholder="hf_…"
-                  autocomplete="off"
-                />
-                <button type="button" class="btn btn-ghost btn-sm toggle-vis" data-target="hf-key">Show</button>
-              </div>
-            </div>
-          </section>
-
-          <div id="settings-msg" class="message-box hidden"></div>
-          <button type="submit" class="btn btn-primary btn-full">Save</button>
-        </form>
+        <div id="settings-msg" class="message-box hidden"></div>
       </main>
     </div>
   `
@@ -47,29 +33,21 @@ export function renderSettings(container, navigate) {
     else navigate('#dashboard')
   })
 
-  container.querySelector('.toggle-vis').addEventListener('click', btn => {
-    const input = container.querySelector('#hf-key')
-    if (input.type === 'password') { input.type = 'text'; btn.target.textContent = 'Hide' }
-    else { input.type = 'password'; btn.target.textContent = 'Show' }
-  })
-
   const msgEl = container.querySelector('#settings-msg')
-  container.querySelector('#settings-form').addEventListener('submit', e => {
-    e.preventDefault()
-    const hfApiKey = container.querySelector('#hf-key').value.trim()
-    try {
-      saveSettings({ hfApiKey })
-      msgEl.textContent = 'Saved.'
-      msgEl.className = 'message-box success'
-      setTimeout(() => (msgEl.className = 'message-box hidden'), 2500)
-    } catch (err) {
-      msgEl.textContent = `Save failed: ${err.message}`
-      msgEl.className = 'message-box error'
-    }
-  })
-}
 
-function escAttr(str) {
-  if (!str) return ''
-  return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  container.querySelector('#btn-reset-tour').addEventListener('click', () => {
+    localStorage.removeItem(TOUR_KEY)
+    msgEl.textContent = 'Tour reset. It will appear next time you visit the dashboard.'
+    msgEl.className = 'message-box success'
+    setTimeout(() => (msgEl.className = 'message-box hidden'), 3000)
+  })
+
+  container.querySelector('#btn-clear-data').addEventListener('click', () => {
+    if (!confirm('Delete all sessions and notes? This cannot be undone.')) return
+    localStorage.removeItem(SESSIONS_KEY)
+    localStorage.removeItem(NOTES_KEY)
+    msgEl.textContent = 'All data cleared.'
+    msgEl.className = 'message-box success'
+    setTimeout(() => (msgEl.className = 'message-box hidden'), 2500)
+  })
 }
