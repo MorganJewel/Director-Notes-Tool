@@ -1,4 +1,4 @@
-const TOUR_KEY = 'dma_tour_seen'
+export const TOUR_KEY = 'dma_tour_seen'
 
 const STEPS = [
   {
