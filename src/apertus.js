@@ -1,19 +1,9 @@
 // All AI inference calls live here exclusively.
 
-const POLLINATIONS_CHAT = 'https://text.pollinations.ai/openai'
-
-// Serial request queue. Pollinations allows only 1 concurrent request per IP.
-let _queue = Promise.resolve()
-
-function callAI(systemMsg, userMsg) {
-  const result = new Promise((resolve, reject) => {
-    _queue = _queue.then(() => _fetch(systemMsg, userMsg).then(resolve, reject))
-  })
-  return result
-}
+const AI_ENDPOINT = 'https://text.pollinations.ai/openai'
 
 async function _fetch(systemMsg, userMsg, attempt = 0) {
-  const response = await fetch(POLLINATIONS_CHAT, {
+  const response = await fetch(AI_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -27,8 +17,8 @@ async function _fetch(systemMsg, userMsg, attempt = 0) {
     }),
   })
 
-  if (response.status === 429 && attempt < 3) {
-    await new Promise(r => setTimeout(r, 3000 * (attempt + 1)))
+  if (response.status === 429 && attempt < 4) {
+    await new Promise(r => setTimeout(r, 5000 * (attempt + 1)))
     return _fetch(systemMsg, userMsg, attempt + 1)
   }
 
@@ -65,7 +55,7 @@ export async function suggestCompletion(noteContent, recentNotes = [], actorName
     actorConstraint +
     examplesBlock
 
-  const raw = await callAI(system, `Note so far: "${noteContent}"`)
+  const raw = await _fetch(system, `Note so far: "${noteContent}"`)
 
   const lines = raw
     .split('\n')
@@ -87,5 +77,5 @@ export async function explainNote(noteContent, scriptSnippet) {
     ? `Note: "${noteContent}"\n\nScript context: "${scriptSnippet.substring(0, 200)}"`
     : `Note: "${noteContent}"`
 
-  return (await callAI(system, userMsg)).trim()
+  return (await _fetch(system, userMsg)).trim()
 }
