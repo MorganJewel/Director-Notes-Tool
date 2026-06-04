@@ -1,13 +1,33 @@
 // All AI inference calls live here exclusively.
 
-const AI_ENDPOINT = 'https://text.pollinations.ai/openai'
+const POLLINATIONS_ENDPOINT = 'https://text.pollinations.ai/openai'
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_MODEL = 'llama-3.1-8b-instant'
+const GROQ_KEY_STORAGE = 'dma_groq_key'
+
+function getConfig() {
+  const groqKey = localStorage.getItem(GROQ_KEY_STORAGE)
+  if (groqKey) {
+    return {
+      url: GROQ_ENDPOINT,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+      model: GROQ_MODEL,
+    }
+  }
+  return {
+    url: POLLINATIONS_ENDPOINT,
+    headers: { 'Content-Type': 'application/json' },
+    model: 'openai',
+  }
+}
 
 async function _fetch(systemMsg, userMsg, attempt = 0) {
-  const response = await fetch(AI_ENDPOINT, {
+  const cfg = getConfig()
+  const response = await fetch(cfg.url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: cfg.headers,
     body: JSON.stringify({
-      model: 'openai',
+      model: cfg.model,
       messages: [
         { role: 'system', content: systemMsg },
         { role: 'user', content: userMsg },
