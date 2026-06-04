@@ -2,20 +2,13 @@
 
 const AI_ENDPOINT = 'https://text.pollinations.ai/openai'
 
-// Serial request queue to avoid concurrent in-flight requests.
-let _queue = Promise.resolve()
+let _currentController = null
 
-function callAI(systemMsg, userMsg) {
-  const result = new Promise((resolve, reject) => {
-    _queue = _queue.then(() => _fetch(systemMsg, userMsg).then(resolve, reject))
-  })
-  return result
-}
-
-async function _fetch(systemMsg, userMsg, attempt = 0) {
+async function _fetch(systemMsg, userMsg, signal, attempt = 0) {
   const response = await fetch(AI_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal,
     body: JSON.stringify({
       model: 'openai',
       messages: [
@@ -28,8 +21,11 @@ async function _fetch(systemMsg, userMsg, attempt = 0) {
   })
 
   if (response.status === 429 && attempt < 3) {
-    await new Promise(r => setTimeout(r, 3000 * (attempt + 1)))
-    return _fetch(systemMsg, userMsg, attempt + 1)
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 3000 * (attempt + 1))
+      signal.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')) })
+    })
+    return _fetch(systemMsg, userMsg, signal, attempt + 1)
   }
 
   if (!response.ok) {
@@ -44,6 +40,10 @@ async function _fetch(systemMsg, userMsg, attempt = 0) {
 }
 
 export async function suggestCompletion(noteContent, recentNotes = [], actorName = '') {
+  if (_currentController) _currentController.abort()
+  _currentController = new AbortController()
+  const { signal } = _currentController
+
   const actorConstraint = actorName
     ? `\nThis note is specifically about "${actorName}". Every suggestion must be about ${actorName} only. Never introduce or mention any other character.`
     : ''
@@ -65,19 +65,26 @@ export async function suggestCompletion(noteContent, recentNotes = [], actorName
     actorConstraint +
     examplesBlock
 
-  const raw = await callAI(system, `Note so far: "${noteContent}"`)
-
-  const lines = raw
-    .split('\n')
-    .map(l => l.replace(/^[-•*\d.)\s]+/, '').trim())
-    .filter(l => l.length > 2 && l.length < 120)
-    .slice(0, 3)
-
-  if (lines.length === 0) throw new Error('No completions returned.')
-  return lines
+  try {
+    const raw = await _fetch(system, `Note so far: "${noteContent}"`, signal)
+    const lines = raw
+      .split('\n')
+      .map(l => l.replace(/^[-•*\d.)\s]+/, '').trim())
+      .filter(l => l.length > 2 && l.length < 120)
+      .slice(0, 3)
+    if (lines.length === 0) throw new Error('No completions returned.')
+    return lines
+  } catch (err) {
+    if (err.name === 'AbortError') return []
+    throw err
+  }
 }
 
 export async function explainNote(noteContent, scriptSnippet) {
+  if (_currentController) _currentController.abort()
+  _currentController = new AbortController()
+  const { signal } = _currentController
+
   const system =
     'You are a theater dramaturg. In 2-3 sentences, explain in plain English ' +
     'what the director likely meant and what directorial concern they were addressing. ' +
@@ -87,5 +94,5 @@ export async function explainNote(noteContent, scriptSnippet) {
     ? `Note: "${noteContent}"\n\nScript context: "${scriptSnippet.substring(0, 200)}"`
     : `Note: "${noteContent}"`
 
-  return (await callAI(system, userMsg)).trim()
+  return (await _fetch(system, userMsg, signal)).trim()
 }
