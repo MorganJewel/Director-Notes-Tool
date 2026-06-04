@@ -145,6 +145,7 @@ export function renderRehearsal(container, navigate) {
   let ghostIndex = 0
   let debounceTimer = null
   let selectedMoment = null
+  let aiInFlight = false
   const DEBOUNCE_MS = 700
   const MIN_CHARS = 10
 
@@ -239,15 +240,20 @@ export function renderRehearsal(container, navigate) {
     const content = noteContentEl.value.trim()
     if (content.length < MIN_CHARS) return
     debounceTimer = setTimeout(async () => {
-      if (noteContentEl.value.trim().length < MIN_CHARS) return
+      const current = noteContentEl.value.trim()
+      if (current.length < MIN_CHARS || aiInFlight) return
+      aiInFlight = true
       showGhostLoading()
       try {
         const actor = container.querySelector('#note-actor').value.trim()
-        const suggestions = await suggestCompletion(content, recentNoteExamples(), actor)
+        const suggestions = await suggestCompletion(current, recentNoteExamples(), actor)
+        if (noteContentEl.value.trim() !== current) { clearGhost(); return }
         if (suggestions.length > 0) showGhost(suggestions)
         else clearGhost()
       } catch (err) {
         showGhostError(err.message)
+      } finally {
+        aiInFlight = false
       }
     }, DEBOUNCE_MS)
   })
