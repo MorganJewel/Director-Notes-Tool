@@ -145,8 +145,8 @@ export function renderRehearsal(container, navigate) {
   let ghostIndex = 0
   let debounceTimer = null
   let selectedMoment = null
-  const DEBOUNCE_MS = 800
-  const MIN_CHARS = 15
+  const DEBOUNCE_MS = 700
+  const MIN_CHARS = 10
 
   function showGhost(suggestions, index = 0) {
     ghostSuggestions = suggestions
@@ -155,6 +155,20 @@ export function renderRehearsal(container, navigate) {
     ghostTextEl.textContent = suggestions[index]
     ghostHint.querySelector('.ghost-tab-badge').textContent =
       total > 1 ? `Tab  /  1 for next (${index + 1}/${total})` : 'Tab'
+    ghostHint.classList.remove('hidden')
+  }
+
+  function showGhostLoading() {
+    ghostSuggestions = []
+    ghostHint.querySelector('.ghost-tab-badge').textContent = '...'
+    ghostTextEl.textContent = 'thinking'
+    ghostHint.classList.remove('hidden')
+  }
+
+  function showGhostError(msg) {
+    ghostSuggestions = []
+    ghostHint.querySelector('.ghost-tab-badge').textContent = '!'
+    ghostTextEl.textContent = msg
     ghostHint.classList.remove('hidden')
   }
 
@@ -226,11 +240,15 @@ export function renderRehearsal(container, navigate) {
     if (content.length < MIN_CHARS) return
     debounceTimer = setTimeout(async () => {
       if (noteContentEl.value.trim().length < MIN_CHARS) return
+      showGhostLoading()
       try {
         const actor = container.querySelector('#note-actor').value.trim()
         const suggestions = await suggestCompletion(content, recentNoteExamples(), actor)
         if (suggestions.length > 0) showGhost(suggestions)
-      } catch { /* fail silently, ghost text is non-critical */ }
+        else clearGhost()
+      } catch (err) {
+        showGhostError(err.message)
+      }
     }, DEBOUNCE_MS)
   })
 
