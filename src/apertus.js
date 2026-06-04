@@ -1,6 +1,6 @@
 // All AI inference calls live here exclusively.
 
-const APERTUS_ENDPOINT = 'https://router.huggingface.co/publicai/v1/chat/completions'
+const APERTUS_ENDPOINT = 'https://api.publicai.co/v1/chat/completions'
 const APERTUS_MODEL = 'APERTUS8B'
 const APERTUS_API_KEY = import.meta.env.VITE_APERTUS_API_KEY
 
