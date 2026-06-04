@@ -1,8 +1,8 @@
 // All AI inference calls live here exclusively.
 
-const POLLINATIONS_CHAT = 'https://text.pollinations.ai/openai'
+const AI_ENDPOINT = 'https://router.huggingface.co/publicai/v1/chat/completions'
 
-// Serial request queue. Pollinations allows only 1 concurrent request per IP.
+// Serial request queue to avoid concurrent in-flight requests.
 let _queue = Promise.resolve()
 
 function callAI(systemMsg, userMsg) {
@@ -13,7 +13,7 @@ function callAI(systemMsg, userMsg) {
 }
 
 async function _fetch(systemMsg, userMsg, attempt = 0) {
-  const response = await fetch(POLLINATIONS_CHAT, {
+  const response = await fetch(AI_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
