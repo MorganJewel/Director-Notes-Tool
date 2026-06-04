@@ -1,6 +1,6 @@
 // All AI inference calls live here exclusively.
 
-const AI_ENDPOINT = 'https://router.huggingface.co/publicai/v1/chat/completions'
+const AI_ENDPOINT = 'https://text.pollinations.ai/openai'
 
 // Serial request queue to avoid concurrent in-flight requests.
 let _queue = Promise.resolve()
