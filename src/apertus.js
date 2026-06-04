@@ -1,13 +1,35 @@
 // All AI inference calls live here exclusively.
 
-const AI_ENDPOINT = 'https://text.pollinations.ai/openai'
+const APERTUS_ENDPOINT = 'https://api-inference.huggingface.co/models/swiss-ai/apertus-8b-instruct/v1/chat/completions'
+const APERTUS_MODEL = 'swiss-ai/apertus-8b-instruct'
+const APERTUS_API_KEY = import.meta.env.VITE_HF_TOKEN
+
+const POLLINATIONS_ENDPOINT = 'https://text.pollinations.ai/openai'
+
+let aiInFlight = false
+
+function getConfig() {
+  if (APERTUS_API_KEY) {
+    return {
+      url: APERTUS_ENDPOINT,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${APERTUS_API_KEY}` },
+      model: APERTUS_MODEL,
+    }
+  }
+  return {
+    url: POLLINATIONS_ENDPOINT,
+    headers: { 'Content-Type': 'application/json' },
+    model: 'openai',
+  }
+}
 
 async function _fetch(systemMsg, userMsg, attempt = 0) {
-  const response = await fetch(AI_ENDPOINT, {
+  const cfg = getConfig()
+  const response = await fetch(cfg.url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: cfg.headers,
     body: JSON.stringify({
-      model: 'openai',
+      model: cfg.model,
       messages: [
         { role: 'system', content: systemMsg },
         { role: 'user', content: userMsg },
@@ -33,6 +55,16 @@ async function _fetch(systemMsg, userMsg, attempt = 0) {
   return text
 }
 
+async function callAI(systemMsg, userMsg) {
+  if (aiInFlight) return null
+  aiInFlight = true
+  try {
+    return await _fetch(systemMsg, userMsg)
+  } finally {
+    aiInFlight = false
+  }
+}
+
 export async function suggestCompletion(noteContent, recentNotes = [], actorName = '') {
   const actorConstraint = actorName
     ? `\nThis note is specifically about "${actorName}". Every suggestion must be about ${actorName} only. Never introduce or mention any other character.`
@@ -55,7 +87,8 @@ export async function suggestCompletion(noteContent, recentNotes = [], actorName
     actorConstraint +
     examplesBlock
 
-  const raw = await _fetch(system, `Note so far: "${noteContent}"`)
+  const raw = await callAI(system, `Note so far: "${noteContent}"`)
+  if (raw === null) return []
 
   const lines = raw
     .split('\n')
@@ -77,5 +110,7 @@ export async function explainNote(noteContent, scriptSnippet) {
     ? `Note: "${noteContent}"\n\nScript context: "${scriptSnippet.substring(0, 200)}"`
     : `Note: "${noteContent}"`
 
-  return (await _fetch(system, userMsg)).trim()
+  const raw = await callAI(system, userMsg)
+  if (raw === null) throw new Error('Another request is in progress. Try again in a moment.')
+  return raw.trim()
 }
