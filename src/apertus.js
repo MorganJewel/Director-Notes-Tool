@@ -1,7 +1,7 @@
 // All AI inference calls live here exclusively.
 
 const APERTUS_ENDPOINT = 'https://api.publicai.co/v1/chat/completions'
-const APERTUS_MODEL = 'APERTUS8B'
+const APERTUS_MODEL = 'swiss-ai/apertus-8b-instruct'
 const APERTUS_API_KEY = import.meta.env.VITE_APERTUS_API_KEY
 
 const POLLINATIONS_ENDPOINT = 'https://text.pollinations.ai/openai'
