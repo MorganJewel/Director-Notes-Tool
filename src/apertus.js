@@ -1,17 +1,19 @@
 // All AI inference calls live here exclusively.
 
+const APERTUS_ENDPOINT = 'https://router.huggingface.co/publicai/v1/chat/completions'
+const APERTUS_MODEL = 'APERTUS8B'
+const APERTUS_API_KEY = import.meta.env.VITE_APERTUS_API_KEY
+
 const POLLINATIONS_ENDPOINT = 'https://text.pollinations.ai/openai'
-const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.1-8b-instant'
-const GROQ_KEY_STORAGE = 'dma_groq_key'
+
+let aiInFlight = false
 
 function getConfig() {
-  const groqKey = localStorage.getItem(GROQ_KEY_STORAGE)
-  if (groqKey) {
+  if (APERTUS_API_KEY) {
     return {
-      url: GROQ_ENDPOINT,
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-      model: GROQ_MODEL,
+      url: APERTUS_ENDPOINT,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${APERTUS_API_KEY}` },
+      model: APERTUS_MODEL,
     }
   }
   return {
@@ -53,6 +55,16 @@ async function _fetch(systemMsg, userMsg, attempt = 0) {
   return text
 }
 
+async function callAI(systemMsg, userMsg) {
+  if (aiInFlight) return null
+  aiInFlight = true
+  try {
+    return await _fetch(systemMsg, userMsg)
+  } finally {
+    aiInFlight = false
+  }
+}
+
 export async function suggestCompletion(noteContent, recentNotes = [], actorName = '') {
   const actorConstraint = actorName
     ? `\nThis note is specifically about "${actorName}". Every suggestion must be about ${actorName} only. Never introduce or mention any other character.`
@@ -75,7 +87,8 @@ export async function suggestCompletion(noteContent, recentNotes = [], actorName
     actorConstraint +
     examplesBlock
 
-  const raw = await _fetch(system, `Note so far: "${noteContent}"`)
+  const raw = await callAI(system, `Note so far: "${noteContent}"`)
+  if (raw === null) return []
 
   const lines = raw
     .split('\n')
@@ -97,5 +110,7 @@ export async function explainNote(noteContent, scriptSnippet) {
     ? `Note: "${noteContent}"\n\nScript context: "${scriptSnippet.substring(0, 200)}"`
     : `Note: "${noteContent}"`
 
-  return (await _fetch(system, userMsg)).trim()
+  const raw = await callAI(system, userMsg)
+  if (raw === null) throw new Error('Another request is in progress. Try again in a moment.')
+  return raw.trim()
 }
